@@ -25,9 +25,9 @@ def create_performance_asset(path_to_identity : str, path_to_capture_data : str,
 
 
 
-def run_animation_export(performance_asset : unreal.MetaHumanPerformance):
+def run_animation_export(output_order, performance_asset : unreal.MetaHumanPerformance):
     
-    performance_asset_name = performance_asset.get_name()# this is the name of the animation sequence
+    performance_asset_name = "AS"+str(output_order)# this is the name of the animation sequence
     unreal.log("Exporting animation sequence for Performance '{0}'".format(performance_asset_name))
 
     export_settings = unreal.MetaHumanPerformanceExportAnimationSettings()
@@ -35,14 +35,16 @@ def run_animation_export(performance_asset : unreal.MetaHumanPerformance):
     export_settings.show_export_dialog = False
     export_settings.export_range = unreal.PerformanceExportRange.PROCESSING_RANGE
     anim_sequence: unreal.AnimSequence = unreal.MetaHumanPerformanceExportUtils.export_animation_sequence(performance_asset, export_settings)
-    unreal.log("Exported Anim Sequence {0}".format(anim_sequence.get_name()))
+    unreal.log("Exported Anim Sequence {0}".format(performance_asset_name))
 
 
 
 
-def process_shot(performance_asset : unreal.MetaHumanPerformance, export_level_sequence : bool, export_sequence_location : str,
+def process_shot(output_order, performance_asset : unreal.MetaHumanPerformance, export_level_sequence : bool, export_sequence_location : str,
                  path_to_meta_human_target : str, start_frame : int = None, end_frame : int = None):
     
+    performance_asset_name = "AS"+str(output_order)# this is the name of the animation sequence
+
     if start_frame is not None:
         performance_asset.set_editor_property("start_frame_to_process", start_frame)
 
@@ -53,34 +55,34 @@ def process_shot(performance_asset : unreal.MetaHumanPerformance, export_level_s
     process_blocking = True
     performance_asset.set_blocking_processing(process_blocking)
 
-    unreal.log("Starting MH pipeline for '{0}'".format(performance_asset.get_name()))
+    unreal.log("Starting MH pipeline for '{0}'".format(performance_asset_name))
     startPipelineError = performance_asset.start_pipeline()
     if startPipelineError is unreal.StartPipelineErrorType.NONE:
-        unreal.log("Finished MH pipeline for '{0}'".format(performance_asset.get_name()))
+        unreal.log("Finished MH pipeline for '{0}'".format(performance_asset_name))
     elif startPipelineError is unreal.StartPipelineErrorType.TOO_MANY_FRAMES:
-        unreal.log("Too many frames when starting MH pipeline for '{0}'".format(performance_asset.get_name()))
+        unreal.log("Too many frames when starting MH pipeline for '{0}'".format(performance_asset_name))
     else:
-        unreal.log("Unknown error starting MH pipeline for '{0}'".format(performance_asset.get_name()))
+        unreal.log("Unknown error starting MH pipeline for '{0}'".format(performance_asset_name))
 
     #export the animation sequence
-    run_animation_export(performance_asset)
-
-    # finally return the name of animation sequence
-    return performance_asset.get_name()
+    run_animation_export(output_order, performance_asset)
 
 
 
 
-def run(end_frame):
+
+
+def run(output_order, number, end_frame):
     
     #load into the metahuman identity and capture footage, then output a metahuman performance
     performance_asset = create_performance_asset(
         path_to_identity="/Game/MetaHumans/vasilisa_MI2",
-        path_to_capture_data="/Game/MetaHumans/va26_Ingested/006Vasilisa_26",
+        path_to_capture_data="/Game/MetaHumans/va"+str(number)+"_Ingested/006Vasilisa_"+str(number),
         save_performance_location="/Game/Test/")
     
     #process the metahuman performance and export the animation sequence
-    animation_name = process_shot(
+    process_shot(
+        output_order=output_order,
         performance_asset=performance_asset,
         export_level_sequence=True,
         export_sequence_location="/Game/Test/",
@@ -88,7 +90,6 @@ def run(end_frame):
         start_frame=0,
         end_frame=end_frame)
     
-    return animation_name
 
 
 
@@ -183,7 +184,7 @@ def mgMetaHuman_face_keys_export(level_sequence, output_path):
 			
 			folder_path = output_path
 			os.makedirs(folder_path, exist_ok=True)
-			file_path = os.path.join(folder_path, f'{editor_asset_name}_{character_name}_face_anim.json')
+			file_path = os.path.join(folder_path, f'{editor_asset_name}_face_anim.json')
 			with open(file_path, 'w') as keys_file:
 				keys_file.write('anim_keys_dict = ')
 				keys_file.write(json.dumps(face_anim))
@@ -201,19 +202,25 @@ def mgMetaHuman_face_keys_export(level_sequence, output_path):
 
 #path that contains video data, start to process performance
 path = "F:\\Jerry\\Vasilisa"
+output_order = 1
+
 for i in os.listdir(path):
     set_path = os.path.join(path, i)
+
     if os.path.isdir(set_path):
+        #get the current folder number
+        folder_number = int(i.split("_")[-1])
+
         json_file_path = os.path.join(set_path, "take.json")
+
         if os.path.isfile(json_file_path):
             with open(json_file_path, "r") as file:
                 data = json.load(file)
             end_frame = data["frames"]
             end_frame = end_frame // 2 + 1
-            animation_name = run(end_frame)
+            run(output_order, folder_number, end_frame)
             print("The performance process is done!")
-            print("The name of the animation sequence is: " + str(animation_name))
-            print("Done with the first part")
+            output_order += 1
 
 
 
@@ -266,10 +273,10 @@ for i in os.listdir(path):
 
             #start to load into the animation to the current face track:
             #assuming that the name of the animation sequence is "AS_va + number" ! Need to be changed base on the real name
-            face_anim_path = "/Game/Test/AS_006Vasilisa_"
+            face_anim_path = "/Game/Test/AS"
             #then from low to high to load the animation sequence into the current face track (if the sequenced is loaded before, it will not be loaded again, then go the next)
-            for i in range(26,50):#And number order of the animation file should be 1, 2, 3, 4, ... ...
-                final_face_anim_path = face_anim_path + str(i) + "_Performance"
+            for i in range(1,50):#And number order of the animation file should be continueing!!!
+                final_face_anim_path = face_anim_path + str(i)
                 if final_face_anim_path:#if the path exists
                     if animation_sequence[i] == False:#if the animation sequence is not used before
                         animation_sequence[i] = True

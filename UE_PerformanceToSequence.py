@@ -272,11 +272,11 @@ for i in os.listdir(path):
 
 
             #start to load into the animation to the current face track:
-            #assuming that the name of the animation sequence is "AS + number" ! Need to be changed base on the real name, can be changed
-            face_anim_path = "/Game/Test/AS"
+            #Need to be changed base on the real name
+            face_anim_path = "/Game/Test/AS_006Vasilisa_"
             #then from low to high to load the animation sequence into the current face track (if the sequenced is loaded before, it will not be loaded again, then go the next)
-            for i in range(1,50):#And number order of the animation file should be continueing!!!
-                final_face_anim_path = face_anim_path + str(i)
+            for i in range(26,50):#And number order of the animation file should be continueing!!!
+                final_face_anim_path = face_anim_path + str(i) + "_Performance"
                 if final_face_anim_path:#if the path exists
                     if animation_sequence[i] == False:#if the animation sequence is not used before
                         animation_sequence[i] = True
